@@ -36,7 +36,7 @@ const getTasks = async (req, res) => {
 // @access  Private
 const createTask = async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, dueDate, priority, status } = req.body;
     const userId = req.user._id || req.user.id;
 
     if (!title) {
@@ -46,6 +46,10 @@ const createTask = async (req, res) => {
     const task = await taskService.createTask({
       title,
       description,
+      dueDate: dueDate || undefined,
+      priority: ['Low', 'Medium', 'High'].includes(priority) ? priority : 'Medium',
+      status: status === 'completed' ? 'completed' : 'pending',
+      completedAt: status === 'completed' ? new Date() : undefined,
       userId
     });
 
@@ -64,7 +68,7 @@ const createTask = async (req, res) => {
 // @access  Private
 const updateTask = async (req, res) => {
   try {
-    const { title, description, status } = req.body;
+    const { title, description, status, dueDate, priority } = req.body;
     const userId = req.user._id || req.user.id;
     const taskId = req.params.id;
 
@@ -77,7 +81,12 @@ const updateTask = async (req, res) => {
     const updatedTask = await taskService.updateTask(taskId, userId, {
       title: title !== undefined ? title : task.title,
       description: description !== undefined ? description : task.description,
-      status: status !== undefined ? status : task.status
+      status: status !== undefined ? status : task.status,
+      dueDate: dueDate !== undefined ? dueDate : task.dueDate,
+      priority: ['Low', 'Medium', 'High'].includes(priority) ? priority : task.priority,
+      completedAt: status === 'completed'
+        ? task.completedAt || new Date()
+        : null
     });
 
     res.status(200).json({

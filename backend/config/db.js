@@ -1,34 +1,44 @@
+const dns = require('dns');
 const mongoose = require('mongoose');
 
-let fallbackMode = false;
+mongoose.set('strictQuery', false);
 
 const connectDB = async () => {
-  try {
-    console.log("MONGODB_URI:", process.env.MONGODB_URI);
+  const rawConnString = process.env.MONGODB_URI?.trim();
+  if (!rawConnString) {
+    throw new Error('MONGODB_URI is not set in backend/.env');
+  }
 
-    const connString = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/taskmanager';
-    
-    // Connect with a 2-second timeout to fail fast if mongod is not running
+  let connString = rawConnString;
+
+  if (connString.startsWith('mongodb+srv://')) {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+    console.log('Using public DNS servers for Atlas SRV lookup.');
+
+    if (!/^mongodb\+srv:\/\/[^/]+\//.test(connString)) {
+      connString = connString.replace(/\/?\?/, '/taskmanager?');
+      if (!connString.includes('?')) {
+        connString += '/taskmanager';
+      }
+    }
+  }
+
+  try {
     await mongoose.connect(connString, {
-      serverSelectionTimeoutMS: 2000,
+      serverSelectionTimeoutMS: 10000,
     });
-    
     console.log(`MongoDB Connected: ${mongoose.connection.host}`);
-    fallbackMode = false;
   } catch (error) {
-    console.warn('\n================================================================');
-    console.warn('WARNING: Failed to connect to MongoDB.');
-    console.warn(`Error: ${error.message}`);
-    console.warn('Running server in DATABASE FALLBACK MODE (JSON file DB).');
-    console.warn('Tasks and users will be saved locally to backend/data/db.json.');
-    console.warn('================================================================\n');
-    fallbackMode = true;
+    console.error('Unable to connect to MongoDB:', error.message);
+    if (error.message.toLowerCase().includes('bad auth')) {
+      console.error(
+        'MongoDB Atlas authentication failed. Verify the username/password in backend/.env and percent-encode any special characters in the password.'
+      );
+    }
+    throw error;
   }
 };
 
-const isFallbackMode = () => fallbackMode;
-
 module.exports = {
   connectDB,
-  isFallbackMode
 };

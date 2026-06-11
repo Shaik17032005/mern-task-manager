@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { api } from '../api';
 import { User, Mail, Lock, Eye, EyeOff, UserPlus, AlertCircle } from 'lucide-react';
 
@@ -10,7 +11,15 @@ export default function Register({ onRegisterSuccess, navigateToLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
+
+  const calculatePasswordStrength = (value) => {
+    if (!value) return '';
+    if (value.length > 12 && /[A-Z]/.test(value) && /[0-9]/.test(value)) return 'Strong';
+    if (value.length >= 8) return 'Medium';
+    return 'Weak';
+  };
 
   const validate = () => {
     const errors = {};
@@ -52,8 +61,18 @@ export default function Register({ onRegisterSuccess, navigateToLogin }) {
   };
 
   return (
-    <div className="auth-wrapper">
-      <div className="glass-card auth-card">
+    <motion.div
+      className="auth-wrapper"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <motion.div
+        className="glass-card auth-card"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.1, duration: 0.4 }}
+      >
         <div className="auth-header">
           <h2>Create Account</h2>
           <p>Sign up to start organizing your schedule</p>
@@ -129,6 +148,7 @@ export default function Register({ onRegisterSuccess, navigateToLogin }) {
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
+                  setPasswordStrength(calculatePasswordStrength(e.target.value));
                   if (validationErrors.password) {
                     setValidationErrors(prev => ({ ...prev, password: '' }));
                   }
@@ -154,6 +174,11 @@ export default function Register({ onRegisterSuccess, navigateToLogin }) {
               <span className="form-error">
                 <AlertCircle size={12} /> {validationErrors.password}
               </span>
+            )}
+            {passwordStrength && (
+              <div className={`password-strength ${passwordStrength.toLowerCase()}`}>
+                Password strength: {passwordStrength}
+              </div>
             )}
           </div>
 
@@ -207,7 +232,7 @@ export default function Register({ onRegisterSuccess, navigateToLogin }) {
             Login here
           </a>
         </p>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

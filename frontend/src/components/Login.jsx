@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { api } from '../api';
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 
@@ -8,6 +9,7 @@ export default function Login({ onLoginSuccess, navigateToRegister }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
 
   const validate = () => {
@@ -34,7 +36,7 @@ export default function Login({ onLoginSuccess, navigateToRegister }) {
 
     setLoading(true);
     try {
-      const data = await api.login(email, password);
+      const data = await api.login(email, password, rememberMe);
       onLoginSuccess(data.user);
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.');
@@ -44,8 +46,18 @@ export default function Login({ onLoginSuccess, navigateToRegister }) {
   };
 
   return (
-    <div className="auth-wrapper">
-      <div className="glass-card auth-card">
+    <motion.div
+      className="auth-wrapper"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <motion.div
+        className="glass-card auth-card"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.1, duration: 0.4 }}
+      >
         <div className="auth-header">
           <h2>Welcome Back</h2>
           <p>Login to manage your tasks efficiently</p>
@@ -124,6 +136,17 @@ export default function Login({ onLoginSuccess, navigateToRegister }) {
             )}
           </div>
 
+          <div className="form-group remember-me-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              Remember me
+            </label>
+          </div>
+
           <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
             {loading ? (
               <div className="spinner-sm"></div>
@@ -149,7 +172,7 @@ export default function Login({ onLoginSuccess, navigateToRegister }) {
             Register here
           </a>
         </p>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

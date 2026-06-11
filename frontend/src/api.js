@@ -1,103 +1,95 @@
-const API_URL = import.meta.env.VITE_API_URL + "/api";
+import axios from 'axios';
 
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  const headers = {
+const API_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : 'http://localhost:5000/api';
+
+const getToken = () => {
+  return sessionStorage.getItem('token') || localStorage.getItem('token');
+};
+
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
     'Content-Type': 'application/json',
-  };
+  },
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = getToken();
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    config.headers.Authorization = `Bearer ${token}`;
   }
-  return headers;
+  return config;
+});
+
+const storeToken = (token, remember) => {
+  if (remember) {
+    localStorage.setItem('token', token);
+    sessionStorage.removeItem('token');
+  } else {
+    sessionStorage.setItem('token', token);
+    localStorage.removeItem('token');
+  }
 };
 
 export const api = {
-  // Auth operations
-  login: async (email, password) => {
-    const res = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Login failed');
+  login: async (email, password, remember = true) => {
+    const response = await apiClient.post('/auth/login', { email, password });
+    const data = response.data;
+
     if (data.token) {
-      localStorage.setItem('token', data.token);
+      storeToken(data.token, remember);
     }
+
     return data;
   },
 
+  // FIXED REGISTER FUNCTION
   register: async (name, email, password) => {
-    const res = await fetch(`${API_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password }),
+    const response = await apiClient.post('/auth/register', {
+      name,
+      email,
+      password,
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Registration failed');
-    if (data.token) {
-      localStorage.setItem('token', data.token);
-    }
-    return data;
+
+    // DO NOT STORE TOKEN HERE
+    return response.data;
   },
 
   getMe: async () => {
-    const res = await fetch(`${API_URL}/auth/me`, {
-      headers: getHeaders(),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to fetch user profile');
-    return data.user;
+    const response = await apiClient.get('/auth/me');
+    return response.data.user;
   },
 
   logout: () => {
     localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
   },
 
   isAuthenticated: () => {
-    return !!localStorage.getItem('token');
+    return !!getToken();
   },
 
-  // Task operations
   getTasks: async ({ search = '', status = 'all', page = 1, limit = 6 } = {}) => {
-    const queryParams = new URLSearchParams({ search, status, page, limit });
-    const res = await fetch(`${API_URL}/tasks?${queryParams.toString()}`, {
-      headers: getHeaders(),
+    const response = await apiClient.get('/tasks', {
+      params: { search, status, page, limit },
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to retrieve tasks');
-    return data; // Returns { success: true, data: tasks, pagination: { total, pages, page, limit } }
+    return response.data;
   },
 
   createTask: async (taskData) => {
-    const res = await fetch(`${API_URL}/tasks`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(taskData),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to create task');
-    return data.data;
+    const response = await apiClient.post('/tasks', taskData);
+    return response.data.data;
   },
 
   updateTask: async (id, updateData) => {
-    const res = await fetch(`${API_URL}/tasks/${id}`, {
-      method: 'PUT',
-      headers: getHeaders(),
-      body: JSON.stringify(updateData),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to update task');
-    return data.data;
+    const response = await apiClient.put(`/tasks/${id}`, updateData);
+    return response.data.data;
   },
 
   deleteTask: async (id) => {
-    const res = await fetch(`${API_URL}/tasks/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders(),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to delete task');
-    return data;
+    const response = await apiClient.delete(`/tasks/${id}`);
+    return response.data;
   },
 };

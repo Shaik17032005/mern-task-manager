@@ -36,11 +36,13 @@ const registerUser = async (req, res) => {
 
     res.status(201).json({
       success: true,
+      message: 'Registration successful! Please login.',
       token: generateToken(userId),
       user: {
         id: userId,
         name: user.name,
         email: user.email,
+        avatar: user.avatar,
       },
     });
   } catch (error) {
@@ -61,14 +63,14 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Please provide email and password' });
     }
 
-    // Get user
-    const user = await userService.getUserByEmail(email);
+    // Get user (need password field for comparison)
+    const user = await userService.getUserByEmailWithPassword(email);
     if (!user) {
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
     // Check password
-    const isMatch = await userService.verifyPassword(user, password);
+    const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
@@ -82,6 +84,7 @@ const loginUser = async (req, res) => {
         id: userId,
         name: user.name,
         email: user.email,
+        avatar: user.avatar,
       },
     });
   } catch (error) {
@@ -102,16 +105,13 @@ const getMe = async (req, res) => {
         id: userId,
         name: req.user.name,
         email: req.user.email,
+        avatar: req.user.avatar,
       },
     });
   } catch (error) {
-    console.error('Get Me Error:', error.message);
-    res.status(500).json({ success: false, error: 'Server error retrieving profile' });
+    console.error('GetMe Error:', error.message);
+    res.status(500).json({ success: false, error: 'Server error fetching profile' });
   }
 };
 
-module.exports = {
-  registerUser,
-  loginUser,
-  getMe,
-};
+module.exports = { registerUser, loginUser, getMe };

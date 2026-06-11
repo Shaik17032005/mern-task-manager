@@ -1,83 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import Login from './components/Login';
-import Register from './components/Register';
-import Dashboard from './components/Dashboard';
-import { api } from './api';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import DashboardPage from './pages/DashboardPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
-  const [page, setPage] = useState('login'); // 'login' | 'register' | 'dashboard'
-  const [user, setUser] = useState(null);
-  const [initializing, setInitializing] = useState(true);
-
-  // Restore user session on mount if token exists
-  useEffect(() => {
-    const checkSession = async () => {
-      if (api.isAuthenticated()) {
-        try {
-          const profile = await api.getMe();
-          setUser(profile);
-          setPage('dashboard');
-        } catch (err) {
-          console.warn('Session restoration failed:', err.message);
-          api.logout();
-          setPage('login');
-        }
-      } else {
-        setPage('login');
-      }
-      setInitializing(false);
-    };
-
-    checkSession();
-  }, []);
-
-  const handleLoginSuccess = (loggedInUser) => {
-    setUser(loggedInUser);
-    setPage('dashboard');
-  };
-
-  const handleRegisterSuccess = (registeredUser) => {
-    setUser(registeredUser);
-    setPage('dashboard');
-  };
-
-  const handleLogout = () => {
-    api.logout();
-    setUser(null);
-    setPage('login');
-  };
-
-  if (initializing) {
-    return (
-      <div className="loading-wrapper" style={{ height: '100vh' }}>
-        <div className="spinner"></div>
-        <p style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>
-          Restoring session...
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <>
-      {page === 'login' && (
-        <Login 
-          onLoginSuccess={handleLoginSuccess} 
-          navigateToRegister={() => setPage('register')} 
-        />
-      )}
-      {page === 'register' && (
-        <Register 
-          onRegisterSuccess={handleRegisterSuccess} 
-          navigateToLogin={() => setPage('login')} 
-        />
-      )}
-      {page === 'dashboard' && user && (
-        <Dashboard 
-          user={user} 
-          onLogout={handleLogout} 
-        />
-      )}
-    </>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

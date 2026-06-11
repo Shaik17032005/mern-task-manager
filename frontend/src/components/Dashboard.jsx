@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { api } from '../api';
+import Navbar from './Navbar';
 import TaskModal from './TaskModal';
+import { useTheme } from '../hooks/useTheme';
 import { 
-  Plus, Search, LogOut, CheckCircle2, Circle, 
+  Plus, Search, CheckCircle2, Circle, 
   Trash2, Edit3, Calendar, ListTodo, AlertCircle, 
   HelpCircle, ChevronLeft, ChevronRight, Server, Database
 } from 'lucide-react';
 
 export default function Dashboard({ user, onLogout }) {
+  const { isDarkMode, toggleTheme } = useTheme();
   const [tasks, setTasks] = useState([]);
   const [totalTasks, setTotalTasks] = useState(0);
   const [pendingTasks, setPendingTasks] = useState(0);
   const [completedTasks, setCompletedTasks] = useState(0);
+  const completionPercentage = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
   // Filtering & Pagination State
   const [search, setSearch] = useState('');
@@ -34,12 +39,13 @@ export default function Dashboard({ user, onLogout }) {
   const fetchHealth = async () => {
     try {
       const res = await fetch('http://localhost:5000/api/health');
-      const data = await res.json();
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : {};
       if (data && data.dbMode) {
         setDbMode(data.dbMode);
       }
     } catch (err) {
-      setDbMode('Local Fallback Active');
+      setDbMode('Server Unavailable');
     }
   };
 
@@ -170,8 +176,21 @@ export default function Dashboard({ user, onLogout }) {
     });
   };
 
+  const getUserInitials = () => {
+    return user?.name
+      ? user.name
+          .split(' ')
+          .map((part) => part[0]?.toUpperCase())
+          .join('')
+          .slice(0, 2)
+      : 'TF';
+  };
+
   return (
     <div className="app-container">
+      {/* Navbar */}
+      <Navbar user={user} onLogout={onLogout} />
+
       {/* Dashboard Top Header */}
       <header className="glass-card dashboard-header">
         <div className="logo-section">
@@ -180,28 +199,22 @@ export default function Dashboard({ user, onLogout }) {
           </div>
           <div>
             <h1 className="logo-text">Taskflow</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.1rem' }}>
-              <Database size={10} color="var(--text-muted)" />
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                {dbMode}
-              </span>
+            <p className="logo-subtitle">Smart task management to keep your day focused.</p>
+            <div className="health-row">
+              <Database size={12} color="var(--text-muted)" />
+              <span className="health-text">{dbMode}</span>
             </div>
           </div>
-        </div>
-
-        <div className="user-profile">
-          <div className="user-info">
-            <p className="user-name">{user.name}</p>
-            <p className="user-email">{user.email}</p>
-          </div>
-          <button className="btn btn-secondary action-btn-delete" onClick={onLogout} title="Log Out">
-            <LogOut size={16} />
-          </button>
         </div>
       </header>
 
       {/* Stats Counter Row */}
-      <section className="stats-grid">
+      <motion.section
+        className="stats-grid"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <div className="glass-card stat-card">
           <div>
             <div className="stat-value">{totalTasks}</div>
@@ -231,10 +244,20 @@ export default function Dashboard({ user, onLogout }) {
             <CheckCircle2 size={24} />
           </div>
         </div>
-      </section>
+
+        <div className="glass-card stat-card">
+          <div>
+            <div className="stat-value" style={{ color: 'var(--primary)' }}>{completionPercentage}%</div>
+            <div className="stat-title">Completion Rate</div>
+          </div>
+          <div className="stat-icon-wrapper stat-icon-total">
+            <Circle size={24} />
+          </div>
+        </div>
+      </motion.section>
 
       {/* Controls Bar: Search, Filters, Add Button */}
-      <div className="glass-card control-bar">
+      <motion.div className="glass-card control-bar">
         <div className="search-input-wrapper">
           <Search className="search-icon" size={18} />
           <input
@@ -271,7 +294,7 @@ export default function Dashboard({ user, onLogout }) {
           <Plus size={18} />
           <span>New Task</span>
         </button>
-      </div>
+      </motion.div>
 
       {error && (
         <div className="alert alert-danger">
@@ -303,14 +326,35 @@ export default function Dashboard({ user, onLogout }) {
         </div>
       ) : (
         <>
-          <div className="tasks-grid">
-            {tasks.map((task) => (
-              <div 
-                key={task._id || task.id} 
+          <motion.div 
+            className="tasks-grid"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            {tasks.map((task, index) => (
+              <motion.div
+                key={task._id || task.id}
                 className={`glass-card task-card ${task.status === 'completed' ? 'completed' : 'pending'}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+                whileHover={{ y: -5 }}
               >
                 <div className="task-header">
-                  <h4 className="task-title">{task.title}</h4>
+                  <div>
+                    <h4 className="task-title">{task.title}</h4>
+                    <div className="task-meta-row">
+                      <span className={`task-meta-badge priority ${task.priority?.toLowerCase()}`}>
+                        {task.priority}
+                      </span>
+                      {task.dueDate && (
+                        <span className="task-meta-badge due-date">
+                          Due {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <span className={`status-badge ${task.status}`}>
                     {task.status}
                   </span>
@@ -350,9 +394,9 @@ export default function Dashboard({ user, onLogout }) {
                     </button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
           {/* Pagination Row */}
           {totalPages > 1 && (

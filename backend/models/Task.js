@@ -11,11 +11,23 @@ const TaskSchema = new mongoose.Schema(
     description: {
       type: String,
       trim: true,
+      default: '',
     },
     status: {
       type: String,
       enum: ['pending', 'completed'],
       default: 'pending',
+    },
+    priority: {
+      type: String,
+      enum: ['Low', 'Medium', 'High'],
+      default: 'Medium',
+    },
+    dueDate: {
+      type: Date,
+    },
+    completedAt: {
+      type: Date,
     },
     userId: {
       type: mongoose.Schema.ObjectId,
